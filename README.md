@@ -33,6 +33,7 @@ contract DegenGamingToken {
     event Approval(address indexed owner, address indexed spender, uint256 value);
     event Mint(address indexed to, uint256 value);
     event Burn(address indexed from, uint256 value);
+    event Redeem(address indexed user, uint256 redeemedAmount, uint256 participationFeesPaid, uint256 bonusTokensReceived);
 
     uint256 public participationFee = 100; // Number of tokens required to participate in the ring game
     uint256 public bonusTokens = 500; // Number of bonus tokens the winner receives
@@ -124,6 +125,9 @@ contract DegenGamingToken {
             gameInProgress = false;
             currentWinner = address(0);
         }
+
+        // Emit an event to inform the user about the redemption
+        emit Redeem(msg.sender, value, participationFeesPaid, bonusTokens);
     }
 
     function burn(uint256 value) public {
@@ -133,17 +137,17 @@ contract DegenGamingToken {
         totalSupply -= value;
         emit Burn(msg.sender, value);
     }
-    
+
     // Function to change the participation fee (onlyOwner)
     function setParticipationFee(uint256 fee) public onlyOwner {
         participationFee = fee;
     }
-    
+
     // Function to change the bonus tokens (onlyOwner)
     function setBonusTokens(uint256 bonus) public onlyOwner {
         bonusTokens = bonus;
     }
-    
+
     // Function to end the current game and reset winner (onlyOwner)
     function endCurrentGame() public onlyOwner {
         gameInProgress = false;
