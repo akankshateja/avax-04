@@ -1,4 +1,3 @@
-# avax-04
 # DegenToken Contract
 The DegenToken contract is an ERC20 token smart contract that enables various functionalities for players in the Degen Gaming platform. The contract is designed to provide the following features:
 
@@ -12,34 +11,146 @@ Checking token balance: Players can check their token balance at any time by cal
 
 Burning tokens: Any token holder can burn their own tokens if they are no longer needed. The burnTokens function allows token holders to burn a specific amount of tokens from their own balance.
 
-Contract Details
-SPDX-License-Identifier: MIT
-Solidity Version: ^0.8.18
-# Functions
-# mint
-function mint(address to, uint256 amount) public onlyOwner
-The mint function allows the contract owner to create new tokens and distribute them to specified addresses. It takes two parameters: to (the recipient's address) and amount (the number of tokens to mint). Only the contract owner can call this function.
+# Contract Details
+SPDX-License-Identifier: MIT Solidity Version: ^0.8.0
 
-# transferTokens
-function transferTokens(address _receiver, uint amount) external
-The transferTokens function enables players to transfer their tokens to others. Players can initiate transfers by providing the recipient's address (_receiver) and the amount of tokens (amount) to transfer. This function requires that the caller has a sufficient balance of tokens.
+# Executing program
+```
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.0;
 
-# checkBalance
-function checkBalance() external view returns (uint)
-The checkBalance function allows players to check their token balance at any time. It returns the balance of tokens held by the caller's address.
+contract DegenGamingToken {
+    string public name = "Degen Gaming Token";
+    string public symbol = "DGT";
+    uint8 public decimals = 18;
+    uint256 public totalSupply;
 
-# burnTokens
-function burnTokens(uint amount) external
-The burnTokens function enables any token holder to burn their own tokens if they are no longer needed. Token holders can specify the amount of tokens (amount) they wish to burn. The function requires that the caller has a sufficient balance of tokens.
+    mapping(address => uint256) public balanceOf;
+    mapping(address => mapping(address => uint256)) public allowance;
+    address public owner;
 
-# gameStore
-function gameStore() public pure returns (string memory)
-The gameStore function provides information about the available items in the in-game store. It returns a string with the options and their corresponding values. Players can choose from these items to redeem with their tokens.
+    event Transfer(address indexed from, address indexed to, uint256 value);
+    event Approval(address indexed owner, address indexed spender, uint256 value);
+    event Mint(address indexed to, uint256 value);
+    event Burn(address indexed from, uint256 value);
 
-# redeemTokens
-function redeemTokens(uint choice) external payable
-The redeemTokens function allows players to redeem tokens for items in the in-game store. Players need to provide the choice parameter, representing the sequence number of the desired item to redeem. The function checks the player's token balance and verifies if it is sufficient for the selected item. If the conditions are met, it transfers the corresponding token value to the contract owner.
+    uint256 public participationFee = 100; // Number of tokens required to participate in the ring game
+    uint256 public bonusTokens = 500; // Number of bonus tokens the winner receives
 
+    // The address of the current winner of the ring game
+    address public currentWinner;
+    // Flag to determine if a game is currently in progress
+    bool public gameInProgress;
 
-# Author
+    // Event to announce the winner of the ring game
+    event WinnerAnnounced(address indexed winner, uint256 bonusTokens);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only the owner can call this function");
+        _;
+    }
+
+    constructor(uint256 initialSupply) {
+        totalSupply = initialSupply * 10**uint256(decimals);
+        balanceOf[msg.sender] = totalSupply;
+        owner = msg.sender;
+    }
+
+    function mint(address to, uint256 value) public onlyOwner {
+        require(to != address(0), "Invalid address");
+        totalSupply += value;
+        balanceOf[to] += value;
+        emit Mint(to, value);
+    }
+
+    function transfer(address to, uint256 value) public returns (bool) {
+        require(to != address(0), "Invalid address");
+        require(value <= balanceOf[msg.sender], "Insufficient balance");
+
+        balanceOf[msg.sender] -= value;
+        balanceOf[to] += value;
+        emit Transfer(msg.sender, to, value);
+        return true;
+    }
+
+    function approve(address spender, uint256 value) public returns (bool) {
+        allowance[msg.sender][spender] = value;
+        emit Approval(msg.sender, spender, value);
+        return true;
+    }
+
+    function redeemTokens(uint256 value) public {
+        require(value <= balanceOf[msg.sender], "Insufficient balance");
+
+        // Calculate the number of participation fees that can be paid with the redeemed tokens
+        uint256 participationFeesPaid = value / participationFee;
+        // Calculate the remainder after paying the participation fees
+        uint256 remainder = value % participationFee;
+
+        // Burn the tokens used for participation fees
+        totalSupply -= participationFeesPaid * participationFee;
+        balanceOf[msg.sender] -= participationFeesPaid * participationFee;
+
+        // Transfer the remainder back to the sender's balance
+        balanceOf[msg.sender] += remainder;
+
+        // Start a new game if not already in progress and there are enough participants
+        if (!gameInProgress && participationFeesPaid > 0) {
+            // Start a new game
+            gameInProgress = true;
+            currentWinner = address(0); // Reset the current winner
+
+            // Emit an event to inform players that a new game is starting
+            emit WinnerAnnounced(address(0), 0);
+        }
+
+        // Check if the sender's address is selected as the winner
+        if (gameInProgress && currentWinner == address(0) && block.number % participationFeesPaid == 0) {
+            // The sender's address is selected as the winner
+            currentWinner = msg.sender;
+        }
+
+        // If the current block number is divisible by the number of participants,
+        // it means the last participant wins the game
+        if (gameInProgress && block.number % participationFeesPaid == 0) {
+            // Transfer the bonus tokens to the winner
+            balanceOf[currentWinner] += bonusTokens;
+            totalSupply += bonusTokens;
+
+            // Emit an event to announce the winner and the bonus tokens received
+            emit WinnerAnnounced(currentWinner, bonusTokens);
+
+            // End the game
+            gameInProgress = false;
+            currentWinner = address(0);
+        }
+    }
+
+    function burn(uint256 value) public {
+        require(value <= balanceOf[msg.sender], "Insufficient balance");
+
+        balanceOf[msg.sender] -= value;
+        totalSupply -= value;
+        emit Burn(msg.sender, value);
+    }
+    
+    // Function to change the participation fee (onlyOwner)
+    function setParticipationFee(uint256 fee) public onlyOwner {
+        participationFee = fee;
+    }
+    
+    // Function to change the bonus tokens (onlyOwner)
+    function setBonusTokens(uint256 bonus) public onlyOwner {
+        bonusTokens = bonus;
+    }
+    
+    // Function to end the current game and reset winner (onlyOwner)
+    function endCurrentGame() public onlyOwner {
+        gameInProgress = false;
+        currentWinner = address(0);
+    }
+}
+
+```
+# Authors
 Akanksha Teja
