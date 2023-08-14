@@ -20,8 +20,8 @@ SPDX-License-Identifier: MIT Solidity Version: ^0.8.0
 pragma solidity ^0.8.0;
 
 contract DegenGamingToken {
-    string public name = "Degen Gaming Token";
-    string public symbol = "DGT";
+    string public name = "Degen";
+    string public symbol = "DGN";
     uint8 public decimals = 18;
     uint256 public totalSupply;
 
