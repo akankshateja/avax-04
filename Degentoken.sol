@@ -61,8 +61,6 @@ contract DegenGamingToken {
         return true;
     }
 
-    
-
     function redeemTokens(uint256 value) public {
         require(value <= balanceOf[msg.sender], "Insufficient balance");
 
@@ -117,5 +115,20 @@ contract DegenGamingToken {
         totalSupply -= value;
         emit Burn(msg.sender, value);
     }
+    
+    // Function to change the participation fee (onlyOwner)
+    function setParticipationFee(uint256 fee) public onlyOwner {
+        participationFee = fee;
+    }
+    
+    // Function to change the bonus tokens (onlyOwner)
+    function setBonusTokens(uint256 bonus) public onlyOwner {
+        bonusTokens = bonus;
+    }
+    
+    // Function to end the current game and reset winner (onlyOwner)
+    function endCurrentGame() public onlyOwner {
+        gameInProgress = false;
+        currentWinner = address(0);
+    }
 }
-
